@@ -7,12 +7,18 @@
         {
             "name": "Robert O'Rourke",
             "email": "rob@interconnectit.com"
-        }
-    ],
-    "authors": [
+        },
         {
             "name": "Interconnect/IT",
             "homepage": "http://interconnectit.com/"
+        },
+        {
+            "name": "Dan Green-Leipciger",
+            "email": "dan@trampolinedigital.com"
+        },
+        {
+            "name": "Trampoline Digital",
+            "homepage": "http://trampolinedigital.com"
         }
     ],
     "require": {

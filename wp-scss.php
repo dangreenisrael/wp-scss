@@ -2,7 +2,7 @@
 /**
  * Plugin Name:  LESS CSS
  * Plugin URI:   https://github.com/sanchothefat/wp-less/
- * Description:  Allows you to enqueue <code>.less</code> files and have them automatically compiled whenever a change is detected.
+ * Description:  Allows you to enqueue <code>.scss</code> files and have them automatically compiled whenever a change is detected.
  * Author:       Robert O'Rourke
  * Contributors: Franz Josef Kaiser, Tom Willmot, Rarst
  * Version:      2.1
@@ -14,18 +14,21 @@
 ! defined( 'ABSPATH' ) AND exit;
 
 // load the autoloader if it's present
-if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
-	require __DIR__ . '/vendor/autoload.php';
+
+
+if ( file_exists( get_template_directory() . '/vendor/autoload.php' ) ) {
+	require get_template_directory() . '/vendor/autoload.php';
 } else {
-	if ( file_exists( __DIR__ . '/vendor/leafo/lessphp/lessc.inc.php' ) ) {
+	if ( file_exists( get_template_directory() . '/vendor/leafo/scssphp/scssc.inc.php' ) ) {
 		// load LESS parser
-		require_once( __DIR__ . '/vendor/leafo/lessphp/lessc.inc.php' );
+		require_once( get_template_directory() . '/vendor/leafo/scssphp/scssc.inc.php' );
 	}
 }
 
-if ( ! class_exists( 'wp_less' ) ) {
+
+if ( ! class_exists( 'wp_scss' ) ) {
 	// add on init to support theme customiser in v3.4
-	add_action( 'init', array( 'wp_less', 'instance' ) );
+	add_action( 'init', array( 'wp_scss', 'instance' ) );
 
 	/**
 	 * Enables the use of LESS in WordPress
@@ -38,10 +41,10 @@ if ( ! class_exists( 'wp_less' ) ) {
 	 * @license MIT
 	 * @version 2012-06-13.1701
 	 */
-	class wp_less {
+	class wp_scss {
 		/**
 		 * @static
-		 * @var    \wp_less Reusable object instance.
+		 * @var    \wp_scss Reusable object instance.
 		 */
 		protected static $instance = null;
 
@@ -52,7 +55,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 		 *
 		 * @see    __construct()
 		 * @static
-		 * @return \wp_less
+		 * @return \wp_scss
 		 */
 		public static function instance() {
 			null === self:: $instance AND self:: $instance = new self;
@@ -144,8 +147,8 @@ if ( ! class_exists( 'wp_less' ) ) {
 		 */
 		public function parse_stylesheet( $src, $handle ) {
 
-			// we only want to handle .less files
-			if ( ! preg_match( '/\.less(\.php)?$/', preg_replace( '/\?.*$/', '', $src ) ) ) {
+			// we only want to handle .scss files
+			if ( ! preg_match( '/\.scss(\.php)?$/', preg_replace( '/\?.*$/', '', $src ) ) ) {
 				return $src;
 			}
 
@@ -183,7 +186,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 			 * necessarily cause a (re)generation, one would need to bump the $ver param
 			 * on wp_enqueue_script() to cause that.
 			 */
-			if ( ! get_option( 'wp_less_always_compile_less', true ) ) {
+			if ( ! get_option( 'wp_scss_always_compile_less', true ) ) {
 				if ( ( ! empty( $cache['version'] ) ) && $cache['version'] === $less_version ) {
 					// restore query string it had if any
 					$url = $cache['url'] . ( ! empty( $query_string ) ? "?{$query_string}" : '' );
@@ -260,7 +263,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 					 *
 					 * This saves space on the options table for high performance environments.
 					 */
-					if ( get_option( 'wp_less_always_compile_less', true ) ) {
+					if ( get_option( 'wp_scss_always_compile_less', true ) ) {
 						$cache['less'] = $less_cache;
 					}
 
@@ -277,7 +280,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 			// restore original url scheme
 			$url = set_url_scheme( $url, $src_scheme );
 
-			if ( get_option( 'wp_less_always_compile_less', true ) ) {
+			if ( get_option( 'wp_scss_always_compile_less', true ) ) {
 				return add_query_arg( 'ver', $less_cache['updated'], $url );
 			} else {
 				return add_query_arg( 'ver', $less_version, $url );
@@ -292,7 +295,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 		 * @return bool
 		 */
 		public function get_cached_file_data( $path ) {
-			$caches = get_option( 'wp_less_cached_files', array() );
+			$caches = get_option( 'wp_scss_cached_files', array() );
 
 			if ( isset( $caches[ $path ] ) ) {
 				return $caches[ $path ];
@@ -318,11 +321,11 @@ if ( ! class_exists( 'wp_less' ) ) {
 		public function update_cached_file_data( $path, $file_data ) {
 			$file_data['less']['compiled'] = '';
 
-			$caches = get_option( 'wp_less_cached_files', array() );
+			$caches = get_option( 'wp_scss_cached_files', array() );
 
 			$caches[ $path ] = $file_data;
 
-			update_option( 'wp_less_cached_files', $caches );
+			update_option( 'wp_scss_cached_files', $caches );
 		}
 
 		/**
@@ -339,7 +342,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 			if ( count( $style_sheets ) ) {
 				$compiled_css = array();
 
-				// loop through editor styles, any .less files will be compiled and the compiled URL returned
+				// loop through editor styles, any .scss files will be compiled and the compiled URL returned
 				foreach ( $style_sheets as $style_sheet ) {
 					$compiled_css[] = $this->parse_stylesheet( $style_sheet, $this->url_to_handle( $style_sheet ) );
 				}
@@ -361,7 +364,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 		public function url_to_handle( $url ) {
 
 			$url = parse_url( $url );
-			$url = str_replace( '.less', '', basename( $url['path'] ) );
+			$url = str_replace( '.scss', '', basename( $url['path'] ) );
 			$url = str_replace( '/', '-', $url );
 
 			return sanitize_key( $url );
@@ -380,13 +383,13 @@ if ( ! class_exists( 'wp_less' ) ) {
 			$upload_dir = wp_upload_dir();
 
 			if ( $path ) {
-				$dir = apply_filters( 'wp_less_cache_path', path_join( $upload_dir['basedir'], 'wp-less-cache' ) );
+				$dir = apply_filters( 'wp_scss_cache_path', path_join( $upload_dir['basedir'], 'wp-less-cache' ) );
 				// create folder if it doesn't exist yet
 				if ( ! file_exists( $dir ) ) {
 					wp_mkdir_p( $dir );
 				}
 			} else {
-				$dir = apply_filters( 'wp_less_cache_url', path_join( $upload_dir['baseurl'], 'wp-less-cache' ) );
+				$dir = apply_filters( 'wp_scss_cache_url', path_join( $upload_dir['baseurl'], 'wp-less-cache' ) );
 			}
 
 			return rtrim( $dir, '/' );
@@ -394,7 +397,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 
 
 		/**
-		 * Escape a string that has non alpha numeric characters variable for use within .less stylesheets
+		 * Escape a string that has non alpha numeric characters variable for use within .scss stylesheets
 		 *
 		 * @param  string $str The string to escape
 		 * @return string $str String ready for passing into the compiler
@@ -464,7 +467,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 		 * @return void
 		 */
 		function register_less_function( $name, $callable ) {
-			$less = wp_less::instance();
+			$less = wp_scss::instance();
 			$less->register( $name, $callable );
 		}
 
@@ -475,7 +478,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 		 * @return void
 		 */
 		function unregister_less_function( $name ) {
-			$less = wp_less::instance();
+			$less = wp_scss::instance();
 			$less->unregister( $name );
 		}
 	}
@@ -489,7 +492,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 		 * @return void
 		 */
 		function add_less_var( $name, $value ) {
-			$less = wp_less::instance();
+			$less = wp_scss::instance();
 			$less->add_var( $name, $value );
 		}
 
@@ -500,7 +503,7 @@ if ( ! class_exists( 'wp_less' ) ) {
 		 * @return void
 		 */
 		function remove_less_var( $name ) {
-			$less = wp_less::instance();
+			$less = wp_scss::instance();
 			$less->remove_var( $name );
 		}
 	}

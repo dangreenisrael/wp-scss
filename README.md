@@ -1,39 +1,42 @@
-# Enable LESS CSS in WordPress
+*While this started as a fork of the https://github.com/roborourke/wp-less repo I decided to make it it's own project
+as it serves a different purpose. Aside from a few changes my me this is almost entirely the work of [Robert O'Rourke](https://github.com/roborourke)*
 
-LESS is an abstraction layer that adds some very powerful features to CSS. It
+# Enable SCSS CSS in WordPress
+
+SCSS is an abstraction layer that adds some very powerful features to CSS. It
 will speed up your development process and make your life that much easier. Find
 out more from the links below and then head on back.
 
-The addon allows you to write and edit `.less` files directly and
+The addon allows you to write and edit `.scss` files directly and
 have WordPress do the job of compiling and caching the resulting CSS. It
-eliminates the extra step of having to compile the `.less` files into CSS yourself
+eliminates the extra step of having to compile the `.scss` files into CSS yourself
 before deploying them.
 
 ## Installation:
 
 If you are using git to clone the repository, do the following:
 
-    git clone git://github.com/sanchothefat/wp-less.git wp-less
+    git clone git://github.com/TrampolineDigital/wp-scss.git wp-scss
 
 If you are downloading the `.zip` or `.tar`, don't forget to download the [lessphp
-dependency too](https://github.com/leafo/lessphp) and copy it into the `vendor/leafo/lessphp`
+dependency too](https://github.com/leafo/scssphp) and copy it into the `vendor/leafo/scssphp`
 directory.
 
 Then install the lessphp dependency using:
 
     composer install
 
-Alternatively, add "icit/wp-less" as a requirement to your composer.json, and add this git repository e.g.:
+Alternatively, add "icit/wp-scss" as a requirement to your composer.json, and add this git repository e.g.:
 
     {
         "repositories": [
             {
                 "type": "git",
-                "url": "https://github.com/sanchothefat/wp-less.git"
+                "url": "https://github.com/TrampolineDigital/wp-scss.git"
             }
         ],
         "require": {
-            "icit/wp-less": "dev-master"
+            "TrampolineDigital/wp-scss": "dev-master"
         }
     }
 
@@ -47,18 +50,18 @@ For use with themes add the following lines to your functions.php:
 <?php
 
 // Include the class (unless you are using the script as a plugin)
-require_once( 'wp-less/wp-less.php' );
+require_once( 'wp-scss/wp-scss.php' );
 
-// enqueue a .less style sheet
+// enqueue a .scss style sheet
 if ( ! is_admin() )
-    wp_enqueue_style( 'style', get_stylesheet_directory_uri() . '/style.less' );
+    wp_enqueue_style( 'style', get_stylesheet_directory_uri() . '/style.scss' );
 
-// you can also use .less files as mce editor style sheets
-add_editor_style( 'editor-style.less' );
+// you can also use .scss files as mce editor style sheets
+add_editor_style( 'editor-style.scss' );
 
 ```
 
-Any registered styles with the `.less` suffix will be compiled and the file URL rewritten.
+Any registered styles with the `.scss` suffix will be compiled and the file URL rewritten.
 
 You won't need a link to your main style sheet in `header.php`. Just make sure
 that `wp_head()` is called in the document head.
@@ -68,13 +71,13 @@ within the file.
 
 ### Passing in variables from PHP
 
-You can pass variables into your `.less` files using the `less_vars` hook or with the
+You can pass variables into your `.scss` files using the `less_vars` hook or with the
 functions defined in the PHP Interface section:
 
 ```php
 <?php
 
-// pass variables into all .less files
+// pass variables into all .scss files
 add_filter( 'less_vars', 'my_less_vars', 10, 2 );
 function my_less_vars( $vars, $handle ) {
     // $handle is a reference to the handle used with wp_enqueue_style()
@@ -85,7 +88,7 @@ function my_less_vars( $vars, $handle ) {
 ?>
 ```
 
-Within your `.less` files you can use the variable as if you had declared it in the stylesheet.
+Within your `.scss` files you can use the variable as if you had declared it in the stylesheet.
 For e.g.:
 
 ```css
@@ -108,7 +111,7 @@ body { background-image: url(@{themeurl}/images/background.png); }
 .plugin-title { background-image: url(@{lessurl}/images/icon.png); }
 ```
 
-`@lessurl` is useful in those cases where you have .less files inside plugins or
+`@lessurl` is useful in those cases where you have .scss files inside plugins or
 other non theme folder locations.
 
 It is important to use these because you can't use relative paths - the compiled CSS is
