@@ -1,5 +1,5 @@
 {
-    "name": "icit/wp-less",
+    "name": "TrampolineDigital/wp-scss",
     "description": "Provides a LESS compiler compatible with wp_enqueue_style() for rapid CSS development in themes and plugins.",
     "license": "GPL-2.0+",
     "type": "wordpress-plugin",
