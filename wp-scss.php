@@ -177,15 +177,26 @@ if ( ! class_exists( 'wp_scss' ) ) {
 
         /**
          * Set the vars from customizer, etc
+         * This handles turning arrays of values into maps
          * @param array $vars
          */
         public function add_vars($vars){
+            foreach ($vars as $key => $value){
+                if (is_array($vars[$key])){
+                    // This like converts the php array into a SCSS map
+                    $vars[$key] = str_replace(
+                        array("{","}",'"'),
+                        array("(",")",""),
+                        json_encode($vars[$key])
+                    );
+                }
+            }
             $this->vars = array_merge($this->vars, $vars);
         }
 
         /**
          * Get the vars
-         * @retun array
+         * @return array
          */
         public function get_vars(){
             return $this->vars;
@@ -322,6 +333,13 @@ if ( ! class_exists( 'wp_scss' ) ) {
 
             $this->add_vars(
                 apply_filters( 'scss_vars', $this->get_vars(), $handle )
+            );
+
+            $this->add_vars(
+                array('color-map'=> array(
+                        "blue"=>"green",
+                        "yellow"=> "purple"
+                    ))
             );
 
             // Don't recompile if the neither the vars nor the source have changed
