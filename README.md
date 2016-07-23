@@ -1,6 +1,3 @@
-*While this started as a fork of the https://github.com/roborourke/wp-less repo I decided to make it it's own project
-as it serves a different purpose. Aside from a few changes my me this is almost entirely the work of [Robert O'Rourke](https://github.com/roborourke)*
-
 # Enable SCSS CSS in WordPress
 
 SCSS is an abstraction layer that adds some very powerful features to CSS. It
@@ -16,7 +13,7 @@ before deploying them.
 
 If you are using git to clone the repository, do the following:
 
-    git clone git://github.com/TrampolineDigital/wp-scss.git wp-scss
+    git clone git://github.com/trampoline-digital/wp-scss.git wp-scss
 
 If you are downloading the `.zip` or `.tar`, don't forget to download the [lessphp
 dependency too](https://github.com/leafo/scssphp) and copy it into the `vendor/leafo/scssphp`
@@ -32,7 +29,7 @@ Alternatively, add "icit/wp-scss" as a requirement to your composer.json, and ad
         "repositories": [
             {
                 "type": "git",
-                "url": "https://github.com/TrampolineDigital/wp-scss.git"
+                "url": "https://github.com/trampoline-digital/wp-scss.git"
             }
         ],
         "require": {
@@ -78,7 +75,7 @@ functions defined in the PHP Interface section:
 <?php
 
 // pass variables into all .scss files
-add_filter( 'less_vars', 'my_less_vars', 10, 2 );
+add_filter( 'less_vars', 'my_scss_vars', 10, 2 );
 function my_less_vars( $vars, $handle ) {
     // $handle is a reference to the handle used with wp_enqueue_style()
     $vars[ 'color' ] = '#000000';
@@ -105,13 +102,13 @@ body { color: @color; }
 body { background-image: url(@{themeurl}/images/background.png); }
 ```
 
-*`@lessurl`** is the URL of the enqueued LESS file (this does not change inside imported files):
+*`@scssurl`** is the URL of the enqueued LESS file (this does not change inside imported files):
 
 ```css
-.plugin-title { background-image: url(@{lessurl}/images/icon.png); }
+.plugin-title { background-image: url(@{scssurl}/images/icon.png); }
 ```
 
-`@lessurl` is useful in those cases where you have .scss files inside plugins or
+`@scssurl` is useful in those cases where you have .scss files inside plugins or
 other non theme folder locations.
 
 It is important to use these because you can't use relative paths - the compiled CSS is
@@ -155,9 +152,9 @@ remove_less_var( 'brandcolour' );
 
 ## Further Reading
 
-[Read the LESS.js documentation here](http://lesscss.org/).
+[Read the DCDD.js documentation here](http://sass-lang.com/guide).
 
-Read the documentation [specific to the PHP parser here](http://leafo.net/lessphp/docs/).
+Read the documentation [specific to the PHP parser here](http://leafo.github.io/scssphp/).
 
 
 ## Contributors
