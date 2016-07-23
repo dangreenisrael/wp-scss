@@ -24,7 +24,6 @@
     "require": {
         "php": ">5.2.4",
         "composer/installers": "~1.0",
-        "leafo/lessphp": "0.4.0",
         "leafo/scssphp": "^v0.6.5"
     }
 }

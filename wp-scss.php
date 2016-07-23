@@ -1,12 +1,12 @@
 <?php
 /**
- * Plugin Name:  LESS CSS
- * Plugin URI:   https://github.com/sanchothefat/wp-less/
+ * Plugin Name:  WP-SCSS
+ * Plugin URI:   https://github.com/TtrampolineDigital/wp-scss/
  * Description:  Allows you to enqueue <code>.scss</code> files and have them automatically compiled whenever a change is detected.
- * Author:       Robert O'Rourke
- * Contributors: Franz Josef Kaiser, Tom Willmot, Rarst
+ * Author:       Trampoline Digital
+ * Contributors: Robert O'Rourke, Franz Josef Kaiser, Tom Willmot, Rarst
  * Version:      2.1
- * Author URI:   http://interconnectit.com
+ * Author URI:   http://trampolinedigital.com
  * License:      MIT
  */
 
@@ -20,7 +20,7 @@ if ( file_exists( get_template_directory() . '/vendor/autoload.php' ) ) {
 	require get_template_directory() . '/vendor/autoload.php';
 } else {
 	if ( file_exists( get_template_directory() . '/vendor/leafo/scssphp/scssc.inc.php' ) ) {
-		// load LESS parser
+		// load SCSS parser
 		require_once( get_template_directory() . '/vendor/leafo/scssphp/scssc.inc.php' );
 	}
 }
@@ -31,15 +31,15 @@ if ( ! class_exists( 'wp_scss' ) ) {
 	add_action( 'init', array( 'wp_scss', 'instance' ) );
 
 	/**
-	 * Enables the use of LESS in WordPress
+	 * Enables the use of SCSS in WordPress
 	 *
 	 * See README.md for usage information
 	 *
-	 * @author  Robert "sancho the fat" O'Rourke
+	 * @author  Robert "sancho the fat" O'Rourke and Dan Green
 	 * @link    http://sanchothefat.com/
-	 * @package WP LESS
+	 * @package WP SCSS
 	 * @license MIT
-	 * @version 2012-06-13.1701
+	 * @version 0.1
 	 */
 	class wp_scss {
 		/**
@@ -68,36 +68,134 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 */
 		public $registered_functions = array();
 
+        /**
+         * @var string The directory where the original scss is
+         */
+        protected $scss_directory;
+
+        /**
+         * @var string The directory where we will save the css and cache
+         */
+        protected $css_directory;
 
 		/**
 		 * @var array Array store of function names to be removed from the compiler class
 		 */
 		public $unregistered_functions = array();
 
-
 		/**
 		 * @var array Variables to be passed into the compiler
 		 */
 		public $vars = array();
-
 
 		/**
 		 * @var string Compression class to use
 		 */
 		public $compression = 'compressed';
 
-
 		/**
 		 * @var bool Whether to preserve comments when compiling
 		 */
 		public $preserve_comments = false;
 
-
 		/**
-		 * @var array Default import directory paths for lessc to scan
+		 * @var array Default import directory paths for SCSS to scan
 		 */
 		public $import_dirs = array();
 
+
+        /*************************
+         ** Getters and Setters **
+         *************************/
+
+
+        /**
+         * Get the css directory
+         * @return string
+         */
+        public function get_css_directory(){
+            return $this->css_directory;
+        }
+
+        /**
+         * Get the scss directory
+         * @return string
+         */
+        public function get_scss_directory(){
+            return $this->scss_directory;
+        }
+
+        /**
+         * Set the scss directory
+         * @param string $directory
+         */
+        public function set_scss_directory($directory){
+            $this->scss_directory = $directory;
+        }
+
+        /**
+         * Set the vars from customizer, etc
+         * @param array $vars
+         */
+        public function add_vars($vars){
+            $this->vars = array_merge($this->vars, $vars);
+        }
+
+        /**
+         * Get the vars
+         * @retun array
+         */
+        public function get_vars(){
+            return $this->vars;
+        }
+
+        /**
+         * Adds an interface to register SCSS functions. See the documentation
+         * for details: http://leafo.github.io/scssphp/docs/#custom_functions
+         *
+         * @param  string $name The name for function used in the less file eg. 'makebluer'
+         * @param  string $callable (callback) Callable method or function that returns a lessc variable
+         * @return void
+         */
+        public function register( $name, $callable ) {
+            $this->registered_functions[ $name ] = $callable;
+        }
+
+        /**
+         * Unregisters a function
+         *
+         * @param  string $name The function name to unregister
+         * @return void
+         */
+        public function unregister( $name ) {
+            $this->unregistered_functions[ $name ] = $name;
+        }
+
+
+        /**
+         * Add less var prior to compiling
+         *
+         * @param  string $name The variable name
+         * @param  string $value The value for the variable as a string
+         * @return void
+         */
+        public function add_var( $name, $value ) {
+            if ( is_string( $name ) ) {
+                $this->vars[ $name ] = $value;
+            }
+        }
+
+        /**
+         * Removes a less var
+         *
+         * @param  string $name Name of the variable to remove
+         * @return void
+         */
+        public function remove_var( $name ) {
+            if ( isset( $this->vars[ $name ] ) ) {
+                unset( $this->vars[ $name ] );
+            }
+        }
 
 		/**
 		 * Constructor
@@ -112,6 +210,11 @@ if ( ! class_exists( 'wp_scss' ) ) {
 
 			// exclude from official repo update check
 			add_filter( 'http_request_args', array( $this, 'http_request_args' ), 5, 2 );
+
+            $this->css_directory = wp_upload_dir()['basedir']."/wp-scss-cache";
+            if (!is_dir($this->css_directory)) {
+                mkdir($this->css_directory, 0777, true);
+            }
 		}
 
 		/**
@@ -137,9 +240,60 @@ if ( ! class_exists( 'wp_scss' ) ) {
 			return $r;
 		}
 
+        /**
+         * Hash a directory (for the sake of checking for changes)
+         *
+         * @param  string $directory The absolute path to the directory
+         * @return string Hash of the directory
+         */
+
+        function hash_directory($directory){
+            if (! is_dir($directory)) {
+                return false;
+            }
+            $files = array();
+            $dir = dir($directory);
+            while (false !== ($file = $dir->read())) {
+                if ($file != '.' and $file != '..') {
+                    if (is_dir($directory . '/' . $file)) {
+                        $files[] = $this->hash_directory($directory . '/' . $file);
+                    }
+                    else
+                    {
+                        $files[] = md5_file($directory . '/' . $file);
+                    }
+                }
+            }
+            $dir->close();
+            return md5(implode('', $files));
+        }
+
+        /**
+         * Check for a change in the scss
+         * @return boolean
+         */
+        public function scss_is_changed(){
+            $hash_file_location = $this->get_css_directory()."/wp-scss-hash.txt";
+            if (!file_exists($hash_file_location)){
+                file_put_contents ($hash_file_location, "No cache yet" );
+            }
+
+            $hash_file = fopen($hash_file_location, "r");
+            $old_hash = fread($hash_file, filesize($this->get_css_directory()."/wp-scss-hash.txt"));
+            fclose($hash_file);
+
+            $new_hash = $this->hash_directory($this->get_scss_directory());
+            $new_hash .= implode("",$this->get_vars());
+            $new_hash = md5($new_hash);
+            if ($old_hash != $new_hash){
+                file_put_contents ($hash_file_location, $new_hash );
+                return true;
+            }
+            return false;
+        }
 
 		/**
-		 * Lessify the stylesheet and return the href of the compiled file
+		 * SCSSify the stylesheet and return the href of the compiled file
 		 *
 		 * @param  string $src Source URL of the file to be parsed
 		 * @param  string $handle An identifier for the file used to create the file name in the cache
@@ -157,175 +311,54 @@ if ( ! class_exists( 'wp_scss' ) ) {
 				$src .= '?';
 			} // prevent non-existent index warning when using list() & explode()
 
-			// Match the URL schemes between WP_CONTENT_URL and $src,
-			// so the str_replace further down will work
-			$src_scheme = parse_url( $src, PHP_URL_SCHEME );
-			$wp_content_url_scheme = parse_url( WP_CONTENT_URL, PHP_URL_SCHEME );
-			if ( $src_scheme != $wp_content_url_scheme ) {
-				$src = set_url_scheme( $src, $wp_content_url_scheme );
-			}
 
-			list( $less_path, $query_string ) = explode( '?', str_replace( WP_CONTENT_URL, WP_CONTENT_DIR, $src ) );
-
-			$cache = $this->get_cached_file_data( $handle );
 			// vars to pass into the compiler - default @themeurl var for image urls etc...
-			$this->vars['themeurl'] = '~"' . get_stylesheet_directory_uri() . '"';
-			$this->vars['lessurl']  = '~"' . dirname( $src ) . '"';
-			$this->vars             = apply_filters( 'less_vars', $this->vars, $handle );
+			$this->add_vars(array(
+			    'theme-url'=> '~"' . get_template_directory_uri() . '"'
+            ));
+            // Lets get the paths we need
+            $scss_directory = str_replace(get_template_directory_uri()."/", "", $src);
+            $scss_directory = substr($scss_directory, 0,strrpos($scss_directory, '/'));
+            $scss_directory = get_template_directory()."/$scss_directory";
+            $this->set_scss_directory($scss_directory);
+            $scss_filename = substr(basename($src), 0,strrpos(basename($src), '?'));
+            $css_filename = str_replace("scss", "css", $scss_filename);
+            $css_directory_uri = wp_upload_dir()['baseurl']."/wp-scss-cache";
 
-			// The overall "version" of the LESS file is all it's vars, src etc.
-			$less_version           = md5( serialize( array( $this->vars, $src ) ) );
+            $this->add_vars(
+                apply_filters( 'scss_vars', $this->get_vars(), $handle )
+            );
 
-			/**
-			 * Give the ability to disable always compiling the LESS with lessc()
-			 * and instead just use the $vars and $version of the LESS file to
-			 * dictate whether the LESS should be (re)generated.
-			 *
-			 * This means we don't need to run everything through the lessc() compiler
-			 * on every page load. The tradeoff is making a change in a LESS file will not
-			 * necessarily cause a (re)generation, one would need to bump the $ver param
-			 * on wp_enqueue_script() to cause that.
-			 */
-			if ( ! get_option( 'wp_scss_always_compile_less', true ) ) {
-				if ( ( ! empty( $cache['version'] ) ) && $cache['version'] === $less_version ) {
-					// restore query string it had if any
-					$url = $cache['url'] . ( ! empty( $query_string ) ? "?{$query_string}" : '' );
-					$url = set_url_scheme( $url, $src_scheme );
-					return add_query_arg( 'ver', $less_version, $url );
-				}
-			}
-			// automatically regenerate files if source's modified time has changed or vars have changed
+            // Don't recompile if the neither the vars nor the source have changed
+            if ( !$this->scss_is_changed() ){
+                return "$css_directory_uri/$css_filename";
+            }
+
+			// Do recompile if either the vars or soure have changed
 			try {
+				$scss = new \Leafo\ScssPhp\Compiler();
+				$scss->setVariables( $this->vars );
+                $scss->addImportPath($scss_directory);
+                $compiled_css = $scss->compile(file_get_contents("$scss_directory/$scss_filename"));
+                $this->save_parsed_css($this->get_css_directory()."/$css_filename", $compiled_css );
 
-				// initialise the parser
-				$less = new lessc;
-
-				// If the cache or root path in it are invalid then regenerate
-				if ( empty( $cache ) || empty( $cache['less']['root'] ) || ! file_exists( $cache['less']['root'] ) ) {
-					$cache = array( 'vars' => $this->vars, 'less' => $less_path );
-				}
-
-				if ( empty( $cache['url'] ) ) {
-					$cache['url'] = trailingslashit( $this->get_cache_dir( false ) ) . "{$handle}.css";
-				}
-
-				// less config
-				$less->setFormatter( apply_filters( 'less_compression', $this->compression ) );
-				$less->setPreserveComments( apply_filters( 'less_preserve_comments', $this->preserve_comments ) );
-				$less->setVariables( $this->vars );
-
-				// add directories to scan for imports
-				$import_dirs = apply_filters( 'less_import_dirs', $this->import_dirs );
-				if ( ! empty( $import_dirs ) ) {
-					foreach ( (array) $import_dirs as $dir ) {
-						$less->addImportDir( $dir );
-					}
-				}
-
-				// register and unregister functions
-				foreach ( $this->registered_functions as $name => $callable ) {
-					$less->registerFunction( $name, $callable );
-				}
-
-				foreach ( $this->unregistered_functions as $name ) {
-					$less->unregisterFunction( $name );
-				}
-
-				// allow devs to mess around with the less object configuration
-				do_action_ref_array( 'lessc', array( &$less ) );
-
-				// $less->cachedCompile only checks for changed file modification times
-				// if using the theme customiser (changed variables not files) then force a compile
-				if ( $this->vars !== $cache['vars'] ) {
-					$force = true;
-				} else {
-					$force = false;
-				}
-				$less_cache = $less->cachedCompile( $cache['less'], apply_filters( 'less_force_compile', $force ) );
-
-				if ( empty( $cache ) || empty( $cache['less']['updated'] ) || md5( $less_cache['compiled'] ) !== md5( $cache['less']['compiled'] ) || $this->vars !== $cache['vars'] ) {
-
-					// output css file name
-					$css_path = trailingslashit( $this->get_cache_dir() ) . "{$handle}.css";
-
-					$cache = array(
-						'vars'    => $this->vars,
-						'url'     => trailingslashit( $this->get_cache_dir( false ) ) . "{$handle}.css",
-						'version' => $less_version,
-						'less'    => null
-					);
-
-					/**
-					 * If the option to not have LESS always compiled is set,
-					 * then we dont store the whole less_cache in the options table as it's
-					 * not needed because we only do a comparison based off $vars and $src
-					 * (which includes the $ver param).
-					 *
-					 * This saves space on the options table for high performance environments.
-					 */
-					if ( get_option( 'wp_scss_always_compile_less', true ) ) {
-						$cache['less'] = $less_cache;
-					}
-
-					$this->save_parsed_css( $css_path, $less_cache['compiled'] );
-					$this->update_cached_file_data( $handle, $cache );
-				}
-			} catch ( exception $ex ) {
+			} catch ( Exception $ex ) {
 				wp_die( $ex->getMessage() );
 			}
 
-			// restore query string it had if any
-			$url = $cache['url'] . ( ! empty( $query_string ) ? "?{$query_string}" : '' );
-
-			// restore original url scheme
-			$url = set_url_scheme( $url, $src_scheme );
-
-			if ( get_option( 'wp_scss_always_compile_less', true ) ) {
-				return add_query_arg( 'ver', $less_cache['updated'], $url );
-			} else {
-				return add_query_arg( 'ver', $less_version, $url );
-			}
-			
+            return "$css_directory_uri/$css_filename";
 		}
 
-		/**
-		 * Update parsed cache data for this file
-		 *
-		 * @param $path
-		 * @return bool
-		 */
-		public function get_cached_file_data( $path ) {
-			$caches = get_option( 'wp_scss_cached_files', array() );
-
-			if ( isset( $caches[ $path ] ) ) {
-				return $caches[ $path ];
-			}
-
-			return null;
-		}
-
+        /**
+         *
+         * @param $css_path
+         * @param $file_contents
+         */
 		public function save_parsed_css( $css_path, $file_contents ) {
-			if ( ! apply_filters( 'less_save_css', $css_path, $file_contents ) ) {
+			if ( ! apply_filters( 'scss_save_css', $css_path, $file_contents ) ) {
 				return;
 			}
-
 			file_put_contents( $css_path, $file_contents );
-		}
-
-		/**
-		 * Update parsed cache data for this file
-		 *
-		 * @param $path
-		 * @param $file_data
-		 */
-		public function update_cached_file_data( $path, $file_data ) {
-			$file_data['less']['compiled'] = '';
-
-			$caches = get_option( 'wp_scss_cached_files', array() );
-
-			$caches[ $path ] = $file_data;
-
-			update_option( 'wp_scss_cached_files', $caches );
 		}
 
 		/**
@@ -354,7 +387,6 @@ if ( ! class_exists( 'wp_scss' ) ) {
 			return $mce_css;
 		}
 
-
 		/**
 		 * Get a nice handle to use for the compiled CSS file name
 		 *
@@ -370,7 +402,6 @@ if ( ! class_exists( 'wp_scss' ) ) {
 			return sanitize_key( $url );
 		}
 
-
 		/**
 		 * Get (and create if unavailable) the compiled CSS cache directory
 		 *
@@ -383,81 +414,21 @@ if ( ! class_exists( 'wp_scss' ) ) {
 			$upload_dir = wp_upload_dir();
 
 			if ( $path ) {
-				$dir = apply_filters( 'wp_scss_cache_path', path_join( $upload_dir['basedir'], 'wp-less-cache' ) );
+				$dir = apply_filters( 'wp_scss_cache_path', path_join( $upload_dir['basedir'], 'wp-scss-cache' ) );
 				// create folder if it doesn't exist yet
 				if ( ! file_exists( $dir ) ) {
 					wp_mkdir_p( $dir );
 				}
 			} else {
-				$dir = apply_filters( 'wp_scss_cache_url', path_join( $upload_dir['baseurl'], 'wp-less-cache' ) );
+				$dir = apply_filters( 'wp_scss_cache_url', path_join( $upload_dir['baseurl'], 'wp-scss-cache' ) );
 			}
 
 			return rtrim( $dir, '/' );
 		}
 
-
-		/**
-		 * Escape a string that has non alpha numeric characters variable for use within .scss stylesheets
-		 *
-		 * @param  string $str The string to escape
-		 * @return string $str String ready for passing into the compiler
-		 */
-		public function sanitize_string( $str ) {
-
-			return '~"' . $str . '"';
-		}
-
-
-		/**
-		 * Adds an interface to register lessc functions. See the documentation
-		 * for details: http://leafo.net/lessphp/docs/#custom_functions
-		 *
-		 * @param  string $name The name for function used in the less file eg. 'makebluer'
-		 * @param  string $callable (callback) Callable method or function that returns a lessc variable
-		 * @return void
-		 */
-		public function register( $name, $callable ) {
-			$this->registered_functions[ $name ] = $callable;
-		}
-
-		/**
-		 * Unregisters a function
-		 *
-		 * @param  string $name The function name to unregister
-		 * @return void
-		 */
-		public function unregister( $name ) {
-			$this->unregistered_functions[ $name ] = $name;
-		}
-
-
-		/**
-		 * Add less var prior to compiling
-		 *
-		 * @param  string $name The variable name
-		 * @param  string $value The value for the variable as a string
-		 * @return void
-		 */
-		public function add_var( $name, $value ) {
-			if ( is_string( $name ) ) {
-				$this->vars[ $name ] = $value;
-			}
-		}
-
-		/**
-		 * Removes a less var
-		 *
-		 * @param  string $name Name of the variable to remove
-		 * @return void
-		 */
-		public function remove_var( $name ) {
-			if ( isset( $this->vars[ $name ] ) ) {
-				unset( $this->vars[ $name ] );
-			}
-		}
 	} // END class
 
-	if ( ! function_exists( 'register_less_function' ) && ! function_exists( 'unregister_less_function' ) ) {
+	if ( ! function_exists( 'register_scss_function' ) && ! function_exists( 'unregister_scss_function' ) ) {
 		/**
 		 * Register additional functions you can use in your less stylesheets. You have access
 		 * to the full WordPress API here so there's lots you could do.
@@ -466,9 +437,9 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @param  string $callable (callback) A callable method or function recognisable by call_user_func
 		 * @return void
 		 */
-		function register_less_function( $name, $callable ) {
-			$less = wp_scss::instance();
-			$less->register( $name, $callable );
+		function register_scss_function( $name, $callable ) {
+			$scss = wp_scss::instance();
+			$scss->register( $name, $callable );
 		}
 
 		/**
@@ -477,13 +448,13 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @param  string $name The function name to remove
 		 * @return void
 		 */
-		function unregister_less_function( $name ) {
-			$less = wp_scss::instance();
-			$less->unregister( $name );
+		function unregister_scss_function( $name ) {
+			$scss = wp_scss::instance();
+			$scss->unregister( $name );
 		}
 	}
 
-	if ( ! function_exists( 'add_less_var' ) && ! function_exists( 'remove_less_var' ) ) {
+	if ( ! function_exists( 'add_scss_var' ) && ! function_exists( 'remove_scss_var' ) ) {
 		/**
 		 * A simple method of adding less vars via a function call
 		 *
@@ -491,9 +462,9 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @param  string $value A string that will converted to the appropriate variable type
 		 * @return void
 		 */
-		function add_less_var( $name, $value ) {
-			$less = wp_scss::instance();
-			$less->add_var( $name, $value );
+		function add_scss_var( $name, $value ) {
+			$scss = wp_scss::instance();
+			$scss->add_var( $name, $value );
 		}
 
 		/**
@@ -502,9 +473,9 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @param  string $name The array key of the variable to remove
 		 * @return void
 		 */
-		function remove_less_var( $name ) {
-			$less = wp_scss::instance();
-			$less->remove_var( $name );
+		function remove_scss_var( $name ) {
+			$scss = wp_scss::instance();
+			$scss->remove_var( $name );
 		}
 	}
 
