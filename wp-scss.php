@@ -78,6 +78,16 @@ if ( ! class_exists( 'wp_scss' ) ) {
          */
         protected $css_directory;
 
+        /**
+         * @var string The full path of the scss file we are dealing with
+         */
+        protected $src_path;
+
+        /**
+         * @var string The handle we are dealing with
+         */
+        protected $handle;
+
 		/**
 		 * @var array Array store of function names to be removed from the compiler class
 		 */
@@ -131,6 +141,38 @@ if ( ! class_exists( 'wp_scss' ) ) {
          */
         public function set_scss_directory($directory){
             $this->scss_directory = $directory;
+        }
+
+        /**
+         * Get the handle
+         * @return string
+         */
+        public function get_handle(){
+            return $this->handle;
+        }
+
+        /**
+         * Set the handle
+         * @param string $handle
+         */
+        public function set_handle($handle){
+            $this->handle = $handle;
+        }
+
+        /**
+         * Get the src path
+         * @return string
+         */
+        public function get_src_path(){
+            return $this->src_path;
+        }
+
+        /**
+         * Set the src path
+         * @param string $src_path
+         */
+        public function set_src_path($src_path){
+            $this->src_path = $src_path;
         }
 
         /**
@@ -240,57 +282,6 @@ if ( ! class_exists( 'wp_scss' ) ) {
 			return $r;
 		}
 
-        /**
-         * Hash a directory (for the sake of checking for changes)
-         *
-         * @param  string $directory The absolute path to the directory
-         * @return string Hash of the directory
-         */
-
-        function hash_directory($directory){
-            if (! is_dir($directory)) {
-                return false;
-            }
-            $files = array();
-            $dir = dir($directory);
-            while (false !== ($file = $dir->read())) {
-                if ($file != '.' and $file != '..') {
-                    if (is_dir($directory . '/' . $file)) {
-                        $files[] = $this->hash_directory($directory . '/' . $file);
-                    }
-                    else
-                    {
-                        $files[] = md5_file($directory . '/' . $file);
-                    }
-                }
-            }
-            $dir->close();
-            return md5(implode('', $files));
-        }
-
-        /**
-         * Check for a change in the scss
-         * @return boolean
-         */
-        public function scss_is_changed(){
-            $hash_file_location = $this->get_css_directory()."/wp-scss-hash.txt";
-            if (!file_exists($hash_file_location)){
-                file_put_contents ($hash_file_location, "No cache yet" );
-            }
-
-            $hash_file = fopen($hash_file_location, "r");
-            $old_hash = fread($hash_file, filesize($this->get_css_directory()."/wp-scss-hash.txt"));
-            fclose($hash_file);
-
-            $new_hash = $this->hash_directory($this->get_scss_directory());
-            $new_hash .= implode("",$this->get_vars());
-            $new_hash = md5($new_hash);
-            if ($old_hash != $new_hash){
-                file_put_contents ($hash_file_location, $new_hash );
-                return true;
-            }
-            return false;
-        }
 
 		/**
 		 * SCSSify the stylesheet and return the href of the compiled file
@@ -320,10 +311,14 @@ if ( ! class_exists( 'wp_scss' ) ) {
             $scss_directory = str_replace(get_template_directory_uri()."/", "", $src);
             $scss_directory = substr($scss_directory, 0,strrpos($scss_directory, '/'));
             $scss_directory = get_template_directory()."/$scss_directory";
-            $this->set_scss_directory($scss_directory);
+
             $scss_filename = substr(basename($src), 0,strrpos(basename($src), '?'));
             $css_filename = str_replace("scss", "css", $scss_filename);
             $css_directory_uri = wp_upload_dir()['baseurl']."/wp-scss-cache";
+
+            $this->set_scss_directory($scss_directory);
+            $this->set_handle($handle);
+            $this->set_src_path("$scss_directory/$scss_filename");
 
             $this->add_vars(
                 apply_filters( 'scss_vars', $this->get_vars(), $handle )
@@ -348,6 +343,62 @@ if ( ! class_exists( 'wp_scss' ) ) {
 
             return "$css_directory_uri/$css_filename";
 		}
+
+        /**
+         * Hash a directory (for the sake of checking for changes)
+         *
+         * @param  string $directory The absolute path to the directory
+         * @return string Hash of the directory
+         */
+        function hash_directory($directory){
+            if (! is_dir($directory)) {
+                return false;
+            }
+            $files = array();
+            $dir = dir($directory);
+            while (false !== ($file = $dir->read())) {
+                if ($file != '.' and $file != '..') {
+                    if (is_dir($directory . '/' . $file)) {
+                        $files[] = $this->hash_directory($directory . '/' . $file);
+                    }
+                    else
+                    {
+                        $files[] = md5_file($directory . '/' . $file);
+                    }
+                }
+            }
+            $dir->close();
+            return md5(implode('', $files));
+        }
+
+        /**
+         * Check for a change in the scss
+         * @return boolean
+         */
+        public function scss_is_changed(){
+
+            $hash_file_location = $this->get_css_directory()."/".$this->get_handle()."-hash.txt";
+            if (!file_exists($hash_file_location)){
+                file_put_contents ($hash_file_location, "No cache yet" );
+            }
+
+            $hash_file = fopen($hash_file_location, "r");
+            $old_hash = fread($hash_file, filesize($hash_file_location));
+            fclose($hash_file);
+
+            $scss_file = fopen($this->src_path, "r");
+            $scss_file_contents = fread($scss_file, filesize($this->src_path));
+            fclose($scss_file);
+
+            $new_hash = $this->hash_directory($this->get_scss_directory());
+            $new_hash .= implode("",$this->get_vars()) . $scss_file_contents;
+            $new_hash = md5($new_hash);
+            if ($old_hash != $new_hash){
+                file_put_contents ($hash_file_location, $new_hash );
+                return true;
+            }
+            return false;
+        }
 
         /**
          *
