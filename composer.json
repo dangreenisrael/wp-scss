@@ -5,20 +5,16 @@
     "type": "wordpress-plugin",
     "authors": [
         {
-            "name": "Robert O'Rourke",
-            "email": "rob@interconnectit.com"
-        },
-        {
-            "name": "Interconnect/IT",
-            "homepage": "http://interconnectit.com/"
-        },
-        {
             "name": "Dan Green-Leipciger",
             "email": "dan@trampolinedigital.com"
         },
         {
             "name": "Trampoline Digital",
             "homepage": "http://trampolinedigital.com"
+        },
+        {
+            "name": "Robert O'Rourke",
+            "email": "rob@hmn.md"
         }
     ],
     "require": {

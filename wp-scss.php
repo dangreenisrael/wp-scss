@@ -26,9 +26,9 @@ if ( file_exists( get_template_directory() . '/vendor/autoload.php' ) ) {
 }
 
 
-if ( ! class_exists( 'wp_scss' ) ) {
+if ( ! class_exists( 'WP_SCSS' ) ) {
 	// add on init to support theme customiser in v3.4
-	add_action( 'init', array( 'wp_scss', 'instance' ) );
+	add_action( 'init', array( 'WP_SCSS', 'instance' ) );
 
 	/**
 	 * Enables the use of SCSS in WordPress
@@ -41,10 +41,10 @@ if ( ! class_exists( 'wp_scss' ) ) {
 	 * @license MIT
 	 * @version 0.1
 	 */
-	class wp_scss {
+	class WP_SCSS {
 		/**
 		 * @static
-		 * @var    \wp_scss Reusable object instance.
+		 * @var    \WP_SCSS Reusable object instance.
 		 */
 		protected static $instance = null;
 
@@ -55,7 +55,7 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 *
 		 * @see    __construct()
 		 * @static
-		 * @return \wp_scss
+		 * @return \WP_SCSS
 		 */
 		public static function instance() {
 			null === self:: $instance AND self:: $instance = new self;
@@ -183,10 +183,10 @@ if ( ! class_exists( 'wp_scss' ) ) {
         public function add_vars($vars){
             foreach ($vars as $key => $value){
                 if (is_array($vars[$key])){
-                    // This like converts the php array into a SCSS map
+                    // This like converts the php array into an SCSS map
                     $vars[$key] = str_replace(
-                        array("{","}",'"'),
-                        array("(",")",""),
+                        array('{','}','"'),
+                        array('(',')',''),
                         json_encode($vars[$key])
                     );
                 }
@@ -507,7 +507,7 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @return void
 		 */
 		function register_scss_function( $name, $callable ) {
-			$scss = wp_scss::instance();
+			$scss = WP_SCSS::instance();
 			$scss->register( $name, $callable );
 		}
 
@@ -518,7 +518,7 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @return void
 		 */
 		function unregister_scss_function( $name ) {
-			$scss = wp_scss::instance();
+			$scss = WP_SCSS::instance();
 			$scss->unregister( $name );
 		}
 	}
@@ -532,7 +532,7 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @return void
 		 */
 		function add_scss_var( $name, $value ) {
-			$scss = wp_scss::instance();
+			$scss = WP_SCSS::instance();
 			$scss->add_var( $name, $value );
 		}
 
@@ -543,7 +543,7 @@ if ( ! class_exists( 'wp_scss' ) ) {
 		 * @return void
 		 */
 		function remove_scss_var( $name ) {
-			$scss = wp_scss::instance();
+			$scss = WP_SCSS::instance();
 			$scss->remove_var( $name );
 		}
 	}

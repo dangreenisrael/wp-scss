@@ -4,151 +4,105 @@ SCSS is an abstraction layer that adds some very powerful features to CSS. It
 will speed up your development process and make your life that much easier. Find
 out more from the links below and then head on back.
 
-The addon allows you to write and edit `.scss` files directly and
-have WordPress do the job of compiling and caching the resulting CSS. It
-eliminates the extra step of having to compile the `.scss` files into CSS yourself
-before deploying them.
+WP-SCSS is an add-on is for theme creators, and allows you to build a site using SCSS, and to use variables from
+the customizer that are live updated. It also allows you to pass arrays and have them converted to SCSS maps.
 
 ## Installation:
 
-If you are using git to clone the repository, do the following:
+WP-SCSS is installed via composer.
 
-    git clone git://github.com/trampoline-digital/wp-scss.git wp-scss
+Simply add the following line to your composer.json file's `require` section :`"trampoline-digital/wp-scss": "dev-master"`
 
-If you are downloading the `.zip` or `.tar`, don't forget to download the [lessphp
-dependency too](https://github.com/leafo/scssphp) and copy it into the `vendor/leafo/scssphp`
-directory.
+Then run `composer update`;
 
-Then install the lessphp dependency using:
+At the top of your `functions.php` file, add the following line : `require_once(__DIR__ . '/vendor/wp-scss/wp-scss.php' );`
 
-    composer install
-
-Alternatively, add "icit/wp-scss" as a requirement to your composer.json, and add this git repository e.g.:
-
-    {
-        "repositories": [
-            {
-                "type": "git",
-                "url": "https://github.com/trampoline-digital/wp-scss.git"
-            }
-        ],
-        "require": {
-            "TrampolineDigital/wp-scss": "dev-master"
-        }
-    }
+You are now ready to use WP-SCSS
 
 ## Usage:
 
-You can either install the script as a standard plugin or use it as an include within a theme or plugin.
+To load an SCSS file, simply enqueue it the way you would any normal stylesheet.
 
-For use with themes add the following lines to your functions.php:
-
-```php
-<?php
-
-// Include the class (unless you are using the script as a plugin)
-require_once( 'wp-scss/wp-scss.php' );
-
-// enqueue a .scss style sheet
-if ( ! is_admin() )
-    wp_enqueue_style( 'style', get_stylesheet_directory_uri() . '/style.scss' );
-
-// you can also use .scss files as mce editor style sheets
-add_editor_style( 'editor-style.scss' );
-
-```
-
-Any registered styles with the `.scss` suffix will be compiled and the file URL rewritten.
+    `wp_enqueue_style('scss_styles', get_template_directory_uri() . '/assets/scss/scss_styles.scss');`
 
 You won't need a link to your main style sheet in `header.php`. Just make sure
 that `wp_head()` is called in the document head.
 
-All the standard LESS features are supported as well as `@import` rules anywhere
+All the standard SCSS features are supported as well as `@import` rules anywhere
 within the file.
 
 ### Passing in variables from PHP
 
-You can pass variables into your `.scss` files using the `less_vars` hook or with the
+You can pass variables into your `.scss` files using the `scss_vars` hook or with the
 functions defined in the PHP Interface section:
 
-```php
-<?php
+This is an example of how to add a single variable.
 
-// pass variables into all .scss files
-add_filter( 'less_vars', 'my_scss_vars', 10, 2 );
-function my_less_vars( $vars, $handle ) {
-    // $handle is a reference to the handle used with wp_enqueue_style()
-    $vars[ 'color' ] = '#000000';
+```
+add_filter( 'scss_vars', 'scss_color', 10, 2 );
+    // $handle is a reference to the handle used with wp_enqueue_style() - don't take it out
+    function scss_color( $vars, $handle ) {
+    $vars["blue"] = "lightblue";
     return $vars;
 }
-
-?>
 ```
 
-Within your `.scss` files you can use the variable as if you had declared it in the stylesheet.
-For e.g.:
-
-```css
-body { color: @color; }
+This is an example of how to add an array of single variables that are set using the customizer with Kirki.
 ```
+add_filter( 'scss_vars', 'scss_colors', 10, 2 );
+// $handle is a reference to the handle used with wp_enqueue_style() - don't take it out
+function scss_colors( $vars, $handle ) {
+    $defaults = new CustomizerDefaults();
+    $colors = $defaults->get_colors();
+    foreach ($defaults->get_colors() as $color){
+        $slug = $color['slug'];
+        $vars[$slug] = get_theme_mod($slug, $colors[$slug]['value']);
+    }
+    return $vars;
+}
+```
+
+If you would like to use an SCSS map, just pass though an array in the following format:
+
+```
+add_filter( 'scss_vars', 'scss_map', 10, 2 );
+ // $handle is a reference to the handle used with wp_enqueue_style() - don't take it out
+function scss_color( $vars, $handle ) {
+    $vars["array_of_colors"] = array(
+        "blue" = "darkblue",
+        "gray" = "lightgray" 
+    );
+    return $vars;
+}
+```
+ 
+You can access the values in SCSS the following way:
+
+```
+.heading{
+    color: map-get(array_of_colors, blue); // Will return the value of 'blue' ('darkblue')
+    background-color: map-get(array_of_colors, gray); // Will return the value of 'gray' ('darkgray')
+    
+}
+```
+
 
 ### Default variables
 
-*There are 2 default variables* you can use without worrying about the above code:
+*There is a default variables* you can use without worrying about the above code:
 
-**`@themeurl`** is the URL of the current theme directory:
+**`$theme-url`** is the URL of the current theme directory:
 
-```css
-body { background-image: url(@{themeurl}/images/background.png); }
-```
-
-*`@scssurl`** is the URL of the enqueued LESS file (this does not change inside imported files):
-
-```css
-.plugin-title { background-image: url(@{scssurl}/images/icon.png); }
-```
-
-`@scssurl` is useful in those cases where you have .scss files inside plugins or
-other non theme folder locations.
-
-It is important to use these because you can't use relative paths - the compiled CSS is
+It is important to use this because you can't use relative paths - the compiled CSS is
 stored in the uploads folder as it is the only place you can guarantee being
 able to write to in any given WordPress installation. As a result relative URLs will
 break.
 
-### PHP interface
 
-`register_less_function()` allows you to create additional less compiler functions
-for use in your stylesheet without having to touch the `lessc` class yourself.
-
-```php
-register_less_function( 'double', function( $args ) {
-    list( $type, $value, $unit ) = $args;
-	return array( $type, $value*2, $unit );
-} );
-```
-
-`unregister_less_function()` works in a similar way but unregisters any compiler
-functions passed to it by name.
-
-```php
-unregister_less_function( 'double' );
-```
-
-`add_less_var()` makes it easy to create or modify variables passed into the
-compiler. Both arguments should be a string, as `lessc` will work out the type of
-variable it is.
-
-```php
-add_less_var( 'brandcolour', '#ec6704' );
-```
-
-`remove_less_var()` is the inverse of `add_less_var()` and only requires the
-variable name to remove.
-
-```php
-remove_less_var( 'brandcolour' );
-```
+### TODO
+- Test adding SCSS functions
+- Write unit tests
+- To some intense QA
 
 ## Further Reading
 
@@ -158,8 +112,11 @@ Read the documentation [specific to the PHP parser here](http://leafo.github.io/
 
 
 ## Contributors
+This project is a revival (started with a duplication) of Robert O'Rourke's [WP-LESS](https://github.com/roborourke/wp-less)
 
-Big massive thanks to those whose contributions and discussion has helped to improve the plugin.
+It goes without saying that this project would never have been possible without the hard work of [Robert O'Rourke](https://github.com/roborourke)
+
+Alos, big massive thanks to those whose contributions and discussion helped to build the original WP-LESS plugin.
 
 * [Tom Willmot](https://github.com/willmot)
 * [Franz Josef Kaiser](https://github.com/franz-josef-kaiser)
