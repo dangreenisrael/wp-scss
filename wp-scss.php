@@ -343,7 +343,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
             );
 
             // Don't recompile if the neither the vars nor the source have changed
-            if ( !$this->scss_is_changed() ){
+            if ( !$this->scss_is_changed() && !WP_DEBUG){
                 return "$css_directory_uri/$css_filename";
             }
 

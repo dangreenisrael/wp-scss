@@ -31,6 +31,9 @@ that `wp_head()` is called in the document head.
 All the standard SCSS features are supported as well as `@import` rules anywhere
 within the file.
 
+*Debugging*
+Having `define('WP_DEBUG', true);` set will force WP-SCSS to recompile on every page reload.
+
 ### Passing in variables from PHP
 
 You can pass variables into your `.scss` files using the `scss_vars` hook or with the
