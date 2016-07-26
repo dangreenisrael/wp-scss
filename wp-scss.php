@@ -270,7 +270,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
             }
 		}
 
-		
+
 		/**
 		 * SCSSify the stylesheet and return the href of the compiled file
 		 *
@@ -308,6 +308,9 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
             $this->set_handle($handle);
             $this->set_src_path("$scss_directory/$scss_filename");
 
+			$is_changed = $this->scss_is_changed()['changed'];
+			$hash = $this->scss_is_changed()['hash'];
+
             $this->add_vars(
                 apply_filters( 'scss_vars', $this->get_vars(), $handle )
             );
@@ -320,7 +323,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
             );
 
             // Don't recompile if the neither the vars nor the source have changed
-            if ( !$this->scss_is_changed() && !WP_DEBUG){
+            if ( !$is_changed && !WP_DEBUG){
                 return "$css_directory_uri/$css_filename";
             }
 
@@ -336,7 +339,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
 				wp_die( $ex->getMessage() );
 			}
 
-            return "$css_directory_uri/$css_filename";
+            return "$css_directory_uri/$css_filename?ver=$hash";
 		}
 
         /**
@@ -368,7 +371,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
 
         /**
          * Check for a change in the scss
-         * @return boolean
+         * @return array
          */
         public function scss_is_changed(){
 
@@ -388,11 +391,15 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
             $new_hash = $this->hash_directory($this->get_scss_directory());
             $new_hash .= implode("",$this->get_vars()) . $scss_file_contents;
             $new_hash = md5($new_hash);
+	        $return = array(
+	        	"changed"   => false,
+		        "hash"      => $new_hash
+	        );
             if ($old_hash != $new_hash){
                 file_put_contents ($hash_file_location, $new_hash );
-                return true;
+	            $return['changed'] = true;
             }
-            return false;
+            return $return;
         }
 
         /**
