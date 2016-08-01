@@ -2,7 +2,6 @@
     "name": "trampoline-digital/wp-scss",
     "description": "Provides a SCSS compiler compatible with wp_enqueue_style() for rapid CSS development in themes and plugins.",
     "license": "MIT",
-    "type": "wordpress-plugin",
     "authors": [
         {
             "name": "Dan Green-Leipciger",
