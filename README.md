@@ -13,9 +13,12 @@ WP-SCSS is installed via composer.
 
 Simply add the following line to your composer.json file's `require` section :`"trampoline-digital/wp-scss": "dev-master"`
 
+or
+
+`composer require trampoline-digital/wp-scss` if you don't want to roll the dice with nightly builds.
 Then run `composer update`;
 
-At the top of your `functions.php` file, add the following line : `require_once(__DIR__ . '/vendor/wp-scss/wp-scss.php' );`
+At the top of your `functions.php` file, add the following line : `require_once(__DIR__ . '/vendor/trampoline-digital/wp-scss/wp-scss.php' );`
 
 You are now ready to use WP-SCSS
 
