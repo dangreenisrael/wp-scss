@@ -331,7 +331,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
 			$this->add_vars(
 				apply_filters( 'scss_vars', $this->get_vars(), $handle )
 			);
-			
+
 			$scss_is_changed = $this->scss_is_changed();
 			$is_changed = $scss_is_changed['changed'];
 			$hash = $scss_is_changed['hash'];
@@ -413,7 +413,6 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
 
             $new_hash = $this->hash_directory($this->get_scss_directory());
             $new_hash .= implode("",$this->get_vars()) . $scss_file_contents;
-	        print_r($this->get_vars());
             $new_hash = md5($new_hash);
 	        $return = array(
 	        	"changed"   => false,
