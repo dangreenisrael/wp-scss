@@ -313,7 +313,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
 
 			// vars to pass into the compiler - default @themeurl var for image urls etc...
 			$this->add_vars(array(
-			    'theme-url'=> '~"' . get_template_directory_uri() . '"'
+			    'theme-url'=> '"' . get_template_directory_uri() . '"'
             ));
             // Lets get the paths we need
             $scss_directory = str_replace(get_template_directory_uri()."/", "", $src);
@@ -328,12 +328,15 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
             $this->set_handle($handle);
             $this->set_src_path("$scss_directory/$scss_filename");
 
-			$is_changed = $this->scss_is_changed()['changed'];
-			$hash = $this->scss_is_changed()['hash'];
+			$this->add_vars(
+				apply_filters( 'scss_vars', $this->get_vars(), $handle )
+			);
+			
+			$scss_is_changed = $this->scss_is_changed();
+			$is_changed = $scss_is_changed['changed'];
+			$hash = $scss_is_changed['hash'];
 
-            $this->add_vars(
-                apply_filters( 'scss_vars', $this->get_vars(), $handle )
-            );
+
 
             $this->add_vars(
                 array('color-map'=> array(
@@ -410,6 +413,7 @@ if ( ! class_exists( 'WP_SCSS' ) ) {
 
             $new_hash = $this->hash_directory($this->get_scss_directory());
             $new_hash .= implode("",$this->get_vars()) . $scss_file_contents;
+	        print_r($this->get_vars());
             $new_hash = md5($new_hash);
 	        $return = array(
 	        	"changed"   => false,
